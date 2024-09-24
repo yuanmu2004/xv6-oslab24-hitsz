@@ -327,15 +327,8 @@ ping:
 	python3 ping.py $(FWDPORT)
 endif
 
-GDBARGS = 
-GDBARGS += -ex 'set architecture riscv:rv64'
-GDBARGS += -ex 'target remote 127.0.0.1:$(GDBPORT)'
-GDBARGS += -ex 'symbol-file kernel/kernel'
-GDBARGS += -ex 'set riscv use-compressed-breakpoints yes'
-
-
 gdb: 
-	$(GDB) $(GDBARGS)
+	$(GDB)
 
 ##
 ##  FOR testing lab grading script
