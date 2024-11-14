@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "fs.h": "c",
+        "stat.h": "c",
+        "types.h": "c",
+        "user.h": "c",
+        "proc.h": "c",
+        "spinlock.h": "c",
+        "syscall.h": "c"
+    }
+}

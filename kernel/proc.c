@@ -296,6 +296,13 @@ void reparent(struct proc *p) {
 // until its parent calls wait().
 void exit(int status) {
   struct proc *p = myproc();
+  const static char *PSTATE[5] = {
+    "unused",
+    "sleeping",
+    "runnable",
+    "running",
+    "zombie"
+  };
 
   if (p == initproc) panic("init exiting");
 
@@ -330,6 +337,10 @@ void exit(int status) {
   // as anything else.
   acquire(&p->lock);
   struct proc *original_parent = p->parent;
+  
+  // MODIFIED
+  exit_info("proc %d exit, parent pid %d, name %s, state %s\n", p->pid, original_parent->pid, original_parent->name, PSTATE[original_parent->state]);
+
   release(&p->lock);
 
   // we need the parent's lock in order to wake it up from wait().
@@ -338,6 +349,17 @@ void exit(int status) {
 
   acquire(&p->lock);
 
+
+  // MODIFIED
+  struct proc *pp;
+  int ccount = 0;
+  for (pp = p; pp < &proc[NPROC]; pp++) {
+    if (pp->parent == p) {
+      acquire(&pp->lock);
+      exit_info("proc %d exit, child %d, pid %d, name %s, state %s\n", p->pid, ccount++, pp->pid, pp->name, PSTATE[pp->state]);
+      release(&pp->lock);
+    }
+  }
   // Give any children to init.
   reparent(p);
 
@@ -356,7 +378,8 @@ void exit(int status) {
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
-int wait(uint64 addr) {
+// MODIFIED
+int wait(uint64 addr, int flag) {
   struct proc *np;
   int havekids, pid;
   struct proc *p = myproc();
@@ -400,6 +423,12 @@ int wait(uint64 addr) {
       return -1;
     }
 
+    // MODIFIED
+    if (flag) {
+      release(&p->lock);
+      return -1;
+    }
+    else
     // Wait for a child to exit.
     sleep(p, &p->lock);  // DOC: wait-sleep
   }
@@ -471,6 +500,21 @@ void sched(void) {
 // Give up the CPU for one scheduling round.
 void yield(void) {
   struct proc *p = myproc();
+  acquire(&p->lock);
+  printf("Save the context of the process to the memory region from address %p to %p\n", (uint64)&p->context, (uint64)&p->context + sizeof(struct context));
+  printf("Current running process pid is %d and user pc is %p\n", p->pid, p->trapframe->epc);
+  release(&p->lock);
+  struct proc *pp;
+  int found = 0;
+  for (pp = proc; pp < &proc[NPROC]; ++pp) {
+    acquire(&pp->lock);
+    if (pp->state == RUNNABLE) {
+      printf("Next runnable process pid is %d and user pc is %p\n", pp->pid, pp->trapframe->epc);
+      found = 1;
+    }
+    release(&pp->lock);
+    if (found) break;
+  }
   acquire(&p->lock);
   p->state = RUNNABLE;
   sched();
