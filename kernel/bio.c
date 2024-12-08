@@ -69,15 +69,18 @@ bget(uint dev, uint blockno)
   struct buf *b;
 
   int bucketno = BHASH(blockno);
+  // printf("a%p\n", &bcache.lock[bucketno]);
   acquire(&bcache.lock[bucketno]);
+  // printf("%p\n", &bcache.lock[bucketno]);
 
   // Is the block already cached?
   for(b = bcache.hashbuckets[bucketno].next; b != &bcache.hashbuckets[bucketno]; b = b->next){
     if(b->dev == dev && b->blockno == blockno){
       b->refcnt++;
-      acquiresleep(&b->lock);
       // printf("asfdasfa\n");
       release(&bcache.lock[bucketno]);
+
+      acquiresleep(&b->lock);
       return b;
     }
   }
@@ -91,10 +94,10 @@ bget(uint dev, uint blockno)
   for(b = bcache.hashbuckets[bucketno].next; b != &bcache.hashbuckets[bucketno]; b = b->next){
     if(b->dev == dev && b->blockno == blockno){
       b->refcnt++;
-      acquiresleep(&b->lock);
       // printf("asfdasfa\n");
       release(&bcache.lock[bucketno]);
       release(&bcache.superlock);
+      acquiresleep(&b->lock);
       return b;
     }
   }
@@ -108,12 +111,15 @@ bget(uint dev, uint blockno)
       b->blockno = blockno;
       b->valid = 0;
       b->refcnt = 1;
-      acquiresleep(&b->lock);
       release(&bcache.lock[bucketno]);
+      acquiresleep(&b->lock);
       release(&bcache.superlock);
       return b;
     }
   }
+  //
+
+  //
 
   // Not found
   // Try to find an unused buffer from another bucket.
@@ -135,12 +141,14 @@ bget(uint dev, uint blockno)
         b->valid = 0;
         b->refcnt = 1;
         release(&bcache.lock[i]);
-        acquiresleep(&b->lock);
         release(&bcache.lock[bucketno]);
+        acquiresleep(&b->lock);
         release(&bcache.superlock);
         return b;
       }
     }
+        release(&bcache.lock[i]);
+
   }
   panic("bget: no buffers");
 }
